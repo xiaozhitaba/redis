@@ -133,6 +133,12 @@ void setproctitle(const char *fmt, ...);
 /* Byte ordering detection */
 #include <sys/types.h> /* This will likely define BYTE_ORDER */
 
+/* Define redis_sendfile. */
+#if defined(__linux__) || (defined(__APPLE__) && defined(MAC_OS_X_VERSION_10_5))
+#define HAVE_SENDFILE 1
+ssize_t redis_sendfile(int out_fd, int in_fd, off_t offset, size_t count);
+#endif
+
 #ifndef BYTE_ORDER
 #if (BSD >= 199103)
 # include <machine/endian.h>
@@ -224,6 +230,33 @@ void setproctitle(const char *fmt, ...);
 
 #if defined(__sparc__) || defined(__arm__)
 #define USE_ALIGNED_ACCESS
+#endif
+
+/* Define for redis_set_thread_title */
+#ifdef __linux__
+#define redis_set_thread_title(name) pthread_setname_np(pthread_self(), name)
+#else
+#if (defined __FreeBSD__ || defined __OpenBSD__)
+#include <pthread_np.h>
+#define redis_set_thread_title(name) pthread_set_name_np(pthread_self(), name)
+#elif defined __NetBSD__
+#include <pthread.h>
+#define redis_set_thread_title(name) pthread_setname_np(pthread_self(), name, NULL)
+#else
+#if (defined __APPLE__ && defined(MAC_OS_X_VERSION_10_7))
+int pthread_setname_np(const char *name);
+#include <pthread.h>
+#define redis_set_thread_title(name) pthread_setname_np(name)
+#else
+#define redis_set_thread_title(name)
+#endif
+#endif
+#endif
+
+/* Check if we can use setcpuaffinity(). */
+#if (defined __linux || defined __NetBSD__ || defined __FreeBSD__)
+#define USE_SETCPUAFFINITY
+void setcpuaffinity(const char *cpulist);
 #endif
 
 #endif

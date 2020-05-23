@@ -831,7 +831,7 @@ int loadAppendOnlyFile(char *filename) {
         if (cmd == server.multiCommand) valid_before_multi = valid_up_to;
 
         /* Run the command in the context of a fake client */
-        fakeClient->cmd = cmd;
+        fakeClient->cmd = fakeClient->lastcmd = cmd;
         if (fakeClient->flags & CLIENT_MULTI &&
             fakeClient->cmd->proc != execCommand)
         {
@@ -1596,6 +1596,7 @@ int rewriteAppendOnlyFileBackground(void) {
 
         /* Child */
         redisSetProcTitle("redis-aof-rewrite");
+        redisSetCpuAffinity(server.aof_rewrite_cpulist);
         snprintf(tmpfile,256,"temp-rewriteaof-bg-%d.aof", (int) getpid());
         if (rewriteAppendOnlyFile(tmpfile) == C_OK) {
             sendChildCOWInfo(CHILD_INFO_TYPE_AOF, "AOF rewrite");
